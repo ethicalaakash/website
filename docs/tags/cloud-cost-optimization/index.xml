@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Cloud Cost Optimization on Aakash</title>
+    <link>https://aakashsinghal.io/tags/cloud-cost-optimization/</link>
+    <description>Recent content in Cloud Cost Optimization on Aakash</description>
+    <generator>Hugo</generator>
+    <language>en</language>
+    <lastBuildDate>Thu, 17 Jul 2025 21:19:54 +0530</lastBuildDate>
+    <atom:link href="https://aakashsinghal.io/tags/cloud-cost-optimization/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Integrating Spot Instances at Scale</title>
+      <link>https://aakashsinghal.io/posts/spot-at-scale/</link>
+      <pubDate>Thu, 17 Jul 2025 21:19:54 +0530</pubDate>
+      <guid>https://aakashsinghal.io/posts/spot-at-scale/</guid>
+      <description>&lt;h1 id=&#34;optimizing-ecs-costs-with-ec2-spot-instances&#34;&gt;&#xA;  Optimizing ECS Costs with EC2 Spot Instances&#xA;  &lt;a class=&#34;heading-link&#34; href=&#34;#optimizing-ecs-costs-with-ec2-spot-instances&#34;&gt;&#xA;    &lt;i class=&#34;fa-solid fa-link&#34; aria-hidden=&#34;true&#34; title=&#34;Link to heading&#34;&gt;&lt;/i&gt;&#xA;    &lt;span class=&#34;sr-only&#34;&gt;Link to heading&lt;/span&gt;&#xA;  &lt;/a&gt;&#xA;&lt;/h1&gt;&#xA;&lt;p&gt;As part of my current role I was tasked with integrating &lt;strong&gt;Amazon EC2 Spot Instances&lt;/strong&gt; within our &lt;strong&gt;Amazon ECS clusters&lt;/strong&gt;. While we had already benefited from &lt;strong&gt;Reserved Instances&lt;/strong&gt; and &lt;strong&gt;Savings Plans&lt;/strong&gt;, Spot Instances presented an opportunity for even greater savings—often up to &lt;strong&gt;90% compared to On-Demand pricing&lt;/strong&gt;.&lt;/p&gt;&#xA;&lt;p&gt;However, Spot Instances come with trade-offs. Their availability can fluctuate, and they can be terminated with just a two-minute warning. Safely integrating them into a production ECS environment requires thoughtful architecture, workload-level filtering, and resilient automation.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

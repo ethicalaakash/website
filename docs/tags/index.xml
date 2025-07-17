@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on Aakash</title>
+    <link>https://aakashsinghal.io/tags/</link>
+    <description>Recent content in Tags on Aakash</description>
+    <generator>Hugo</generator>
+    <language>en</language>
+    <lastBuildDate>Thu, 17 Jul 2025 21:19:54 +0530</lastBuildDate>
+    <atom:link href="https://aakashsinghal.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>AWS</title>
+      <link>https://aakashsinghal.io/tags/aws/</link>
+      <pubDate>Thu, 17 Jul 2025 21:19:54 +0530</pubDate>
+      <guid>https://aakashsinghal.io/tags/aws/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Cloud Cost Optimization</title>
+      <link>https://aakashsinghal.io/tags/cloud-cost-optimization/</link>
+      <pubDate>Thu, 17 Jul 2025 21:19:54 +0530</pubDate>
+      <guid>https://aakashsinghal.io/tags/cloud-cost-optimization/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>ECS</title>
+      <link>https://aakashsinghal.io/tags/ecs/</link>
+      <pubDate>Thu, 17 Jul 2025 21:19:54 +0530</pubDate>
+      <guid>https://aakashsinghal.io/tags/ecs/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Spot Instances</title>
+      <link>https://aakashsinghal.io/tags/spot-instances/</link>
+      <pubDate>Thu, 17 Jul 2025 21:19:54 +0530</pubDate>
+      <guid>https://aakashsinghal.io/tags/spot-instances/</guid>
+      <description></description>
+    </item>
+  </channel>
+</rss>

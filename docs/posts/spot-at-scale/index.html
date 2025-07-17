@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>
+  Integrating Spot Instances at Scale · Aakash
+</title>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+
+
+
+
+<meta name="author" content="Aakash Singhal">
+<meta name="description" content="How we safely integrated Amazon EC2 Spot Instances into our ECS clusters to optimize cloud compute costs.">
+<meta name="keywords" content="blog,developer,personal">
+
+
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Integrating Spot Instances at Scale">
+  <meta name="twitter:description" content="How we safely integrated Amazon EC2 Spot Instances into our ECS clusters to optimize cloud compute costs.">
+
+<meta property="og:url" content="https://aakashsinghal.io/posts/spot-at-scale/">
+  <meta property="og:site_name" content="Aakash">
+  <meta property="og:title" content="Integrating Spot Instances at Scale">
+  <meta property="og:description" content="How we safely integrated Amazon EC2 Spot Instances into our ECS clusters to optimize cloud compute costs.">
+  <meta property="og:locale" content="en">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2025-07-17T21:19:54+05:30">
+    <meta property="article:modified_time" content="2025-07-17T21:19:54+05:30">
+    <meta property="article:tag" content="AWS">
+    <meta property="article:tag" content="ECS">
+    <meta property="article:tag" content="Spot Instances">
+    <meta property="article:tag" content="Cloud Cost Optimization">
+
+
+
+
+<link rel="canonical" href="https://aakashsinghal.io/posts/spot-at-scale/">
+
+
+<link rel="preload" href="/fonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+
+
+  
+  
+  <link rel="stylesheet" href="/css/coder.min.6445a802b9389c9660e1b07b724dcf5718b1065ed2d71b4eeaf981cc7cc5fc46.css" integrity="sha256-ZEWoArk4nJZg4bB7ck3PVxixBl7S1xtO6vmBzHzF/EY=" crossorigin="anonymous" media="screen" />
+
+
+
+
+
+
+  
+    
+    
+    <link rel="stylesheet" href="/css/coder-dark.min.a00e6364bacbc8266ad1cc81230774a1397198f8cfb7bcba29b7d6fcb54ce57f.css" integrity="sha256-oA5jZLrLyCZq0cyBIwd0oTlxmPjPt7y6KbfW/LVM5X8=" crossorigin="anonymous" media="screen" />
+  
+
+
+
+ 
+
+
+
+
+<link rel="icon" type="image/svg+xml" href="/images/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/img/favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="/img/favicon-16x16.png" sizes="16x16">
+
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+
+<link rel="manifest" href="/site.webmanifest">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+
+
+
+
+
+
+</head>
+
+
+
+
+
+
+<body class="preload-transitions colorscheme-auto">
+  
+<div class="float-container">
+    <a id="dark-mode-toggle" class="colorscheme-toggle">
+        <i class="fa-solid fa-adjust fa-fw" aria-hidden="true"></i>
+    </a>
+</div>
+
+
+  <main class="wrapper">
+    <nav class="navigation">
+  <section class="container">
+    
+    <a class="navigation-title" href="https://aakashsinghal.io/">
+      Aakash
+    </a>
+    
+    
+      <input type="checkbox" id="menu-toggle" />
+      <label class="menu-button float-right" for="menu-toggle">
+        <i class="fa-solid fa-bars fa-fw" aria-hidden="true"></i>
+      </label>
+      <ul class="navigation-list">
+        
+          
+            <li class="navigation-item">
+              <a class="navigation-link " href="/posts/">Blog</a>
+            </li>
+          
+        
+        
+      </ul>
+    
+  </section>
+</nav>
+
+
+    <div class="content">
+      
+  <section class="container post">
+    <article>
+      <header>
+        <div class="post-title">
+          <h1 class="title">
+            <a class="title-link" href="https://aakashsinghal.io/posts/spot-at-scale/">
+              Integrating Spot Instances at Scale
+            </a>
+          </h1>
+        </div>
+        <div class="post-meta">
+          <div class="date">
+            <span class="posted-on">
+              <i class="fa-solid fa-calendar" aria-hidden="true"></i>
+              <time datetime="2025-07-17T21:19:54&#43;05:30">
+                July 17, 2025
+              </time>
+            </span>
+            <span class="reading-time">
+              <i class="fa-solid fa-clock" aria-hidden="true"></i>
+              5-minute read
+            </span>
+          </div>
+          
+          
+          <div class="tags">
+  <i class="fa-solid fa-tag" aria-hidden="true"></i>
+    <span class="tag">
+      <a href="/tags/aws/">AWS</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/ecs/">ECS</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/spot-instances/">Spot Instances</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/cloud-cost-optimization/">Cloud Cost Optimization</a>
+    </span></div>
+
+        </div>
+      </header>
+
+      <div class="post-content">
+        
+        <h1 id="optimizing-ecs-costs-with-ec2-spot-instances">
+  Optimizing ECS Costs with EC2 Spot Instances
+  <a class="heading-link" href="#optimizing-ecs-costs-with-ec2-spot-instances">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h1>
+<p>As part of my current role I was tasked with integrating <strong>Amazon EC2 Spot Instances</strong> within our <strong>Amazon ECS clusters</strong>. While we had already benefited from <strong>Reserved Instances</strong> and <strong>Savings Plans</strong>, Spot Instances presented an opportunity for even greater savings—often up to <strong>90% compared to On-Demand pricing</strong>.</p>
+<p>However, Spot Instances come with trade-offs. Their availability can fluctuate, and they can be terminated with just a two-minute warning. Safely integrating them into a production ECS environment requires thoughtful architecture, workload-level filtering, and resilient automation.</p>
+<hr>
+<h2 id="the-challenge-balancing-cost-and-reliability">
+  The Challenge: Balancing Cost and Reliability
+  <a class="heading-link" href="#the-challenge-balancing-cost-and-reliability">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>Our ECS environment initially ran entirely on <strong>On-Demand EC2 instances</strong>, managed through <strong>Auto Scaling Groups (ASGs)</strong> connected to <strong>ECS Capacity Providers</strong>. This setup offered high reliability, but also left significant savings on the table.</p>
+<p>Our goal was to introduce <strong>Spot capacity</strong> into our clusters and strategically place eligible workloads on it. The primary challenge? <strong>Mitigating service degradation</strong> caused by the unpredictable nature of Spot infrastructure.</p>
+<hr>
+<h2 id="understanding-spot-limitations">
+  Understanding Spot Limitations
+  <a class="heading-link" href="#understanding-spot-limitations">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>Spot Instances offer impressive discounts, but with a few important caveats:</p>
+<ul>
+<li><strong>Ephemeral nature</strong>: They can be terminated at any time with a 2-minute warning.</li>
+<li><strong>Variable capacity</strong>: Availability fluctuates based on AWS’s excess capacity in each Availability Zone.</li>
+<li><strong>Scaling constraints</strong>: Auto Scaling might stall if your preferred instance types are in short supply.</li>
+</ul>
+<p>To safely adopt Spot, workloads must be <strong>resilient, stateless, and capable of shutting down quickly</strong>. This led us to define a clear, technical set of criteria for Spot eligibility.</p>
+<hr>
+<h2 id="workload-eligibility-criteria">
+  Workload Eligibility Criteria
+  <a class="heading-link" href="#workload-eligibility-criteria">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>To ensure safe and effective use of Spot Instances, we established the following conditions for workload eligibility:</p>
+<h3 id="fast-shutdown-capability">
+  Fast Shutdown Capability
+  <a class="heading-link" href="#fast-shutdown-capability">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li><strong>Requirement</strong>: Containers must define a <code>stopTimeout</code> less than 120 seconds.</li>
+<li><strong>Why it matters</strong>: Ensures graceful shutdown within AWS&rsquo;s two-minute termination window.</li>
+</ul>
+<h3 id="resilience-via-redundancy">
+  Resilience via Redundancy
+  <a class="heading-link" href="#resilience-via-redundancy">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li><strong>Requirement</strong>: The ECS service should have a <code>desiredCount</code> of 2 or more.</li>
+<li><strong>Why it matters</strong>: Guarantees availability by avoiding single-point failures.</li>
+</ul>
+<h3 id="statelessness">
+  Statelessness
+  <a class="heading-link" href="#statelessness">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li><strong>Requirement</strong>: No usage of persistent volumes or local storage.</li>
+<li><strong>Why it matters</strong>: Spot terminations risk data loss if workloads aren’t stateless.</li>
+</ul>
+<h3 id="load-balancer-deregistration--120s">
+  Load Balancer Deregistration &lt; 120s
+  <a class="heading-link" href="#load-balancer-deregistration--120s">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li><strong>Requirement</strong>: Target deregistration delay should be less than 120 seconds.</li>
+<li><strong>Why it matters</strong>: Ensures that tasks are removed from load balancers before forced shutdown, preventing traffic loss.</li>
+</ul>
+<p>These criteria allowed us to systematically identify workloads that can tolerate interruptions without user impact.</p>
+<hr>
+<h2 id="spot-placement-score-sps--predictive-confidence">
+  Spot Placement Score (SPS) &amp; Predictive Confidence
+  <a class="heading-link" href="#spot-placement-score-sps--predictive-confidence">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>To make smarter placement decisions, we introduced a <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-placement-score.html"  class="external-link" target="_blank" rel="noopener"><strong>Spot Placement Score (SPS)</strong></a> metric. This metric reflects the likelihood of acquiring Spot Instances for a specific configuration and is based on:</p>
+<ul>
+<li>The <strong>instance families and sizes</strong> defined in our Spot ASGs</li>
+<li>The <strong>maximum capacity</strong> targeted by those ASGs</li>
+<li><strong>Regional and zone-level availability</strong> of excess Spot capacity</li>
+</ul>
+<p>We derive this score using <strong>AWS’s Spot Placement Score API</strong>, which provides insight into AWS’s internal view of instance availability. We calculate a custom SPS for each cluster configuration and <strong>emit it as a metric</strong> to track Spot capacity health over time.</p>
+<ul>
+<li><strong>High SPS</strong>: Spot capacity is readily available; interruptions are unlikely.</li>
+<li><strong>Low SPS</strong>: Increased risk of interruption; guides us to scale back Spot usage.</li>
+</ul>
+<hr>
+<h2 id="dynamic-adjustments-with-automation">
+  Dynamic Adjustments with Automation
+  <a class="heading-link" href="#dynamic-adjustments-with-automation">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>We built automation around this score to dynamically adjust Spot usage across services and clusters. Our system allows us to:</p>
+<ul>
+<li>Proactively reduce Spot usage when SPS trends downward.</li>
+<li>Disable Spot entirely during critical periods (e.g., product launches).</li>
+<li>Quickly re-enable Spot when the environment stabilizes.</li>
+</ul>
+<p>This is achieved via a global <strong>“Spot percentage” setting in ECS Capacity Providers</strong>, which controls the ratio of tasks placed on Spot vs. On-Demand. Adjusting this percentage allows us to dial in or out of Spot with minimal effort.</p>
+<hr>
+<h2 id="architecture-automating-the-rollout">
+  Architecture: Automating the Rollout
+  <a class="heading-link" href="#architecture-automating-the-rollout">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>To scale this across environments, we built a modular system composed of five key components:</p>
+<h3 id="orchestrator-step-function">
+  Orchestrator (Step Function)
+  <a class="heading-link" href="#orchestrator-step-function">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>Coordinates the entire workflow:</p>
+<ul>
+<li>Identifies eligible services</li>
+<li>Updates capacity provider strategies</li>
+<li>Validates post-deployment health</li>
+<li>Retries updates for unstable services</li>
+</ul>
+<h3 id="determiner-lambda">
+  Determiner (Lambda)
+  <a class="heading-link" href="#determiner-lambda">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>Applies the eligibility criteria and detects drift between current and desired configurations.</p>
+<h3 id="updater-lambda">
+  Updater (Lambda)
+  <a class="heading-link" href="#updater-lambda">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>Applies the updated strategy only if needed, ensuring idempotent and safe deployments.</p>
+<h3 id="stability-checker-lambda">
+  Stability Checker (Lambda)
+  <a class="heading-link" href="#stability-checker-lambda">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>Validates that each service has stabilized (all desired tasks are running, none pending).</p>
+<h3 id="scheduler-eventbridge">
+  Scheduler (EventBridge)
+  <a class="heading-link" href="#scheduler-eventbridge">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>Triggers the orchestrator on a configurable cadence to maintain up-to-date configurations.</p>
+<p>We leverage <strong>ECS capacity provider strategies</strong> to control Spot usage per service. These strategies define how tasks are distributed across capacity providers by assigning weights (e.g., 70% On-Demand, 30% Spot).</p>
+<hr>
+<h2 id="per-service-granularity">
+  Per-Service Granularity
+  <a class="heading-link" href="#per-service-granularity">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>Rather than enforce a blanket rule across all services, we opted for <strong>per-service strategy definitions</strong>. This enables us to:</p>
+<ul>
+<li>Tailor strategies to each service&rsquo;s reliability and behavior</li>
+<li>Perform safe, gradual rollouts</li>
+<li>Fine-tune Spot usage at the workload level</li>
+</ul>
+<p>This granularity gives teams confidence in adoption <strong>without compromising uptime</strong>.</p>
+<hr>
+<h2 id="real-world-results">
+  Real-World Results
+  <a class="heading-link" href="#real-world-results">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>Even with a conservative rollout—capping Spot usage at just <strong>5–10% per cluster</strong>—we achieved <strong>meaningful compute cost savings</strong> without impacting availability or performance.</p>
+<p>As our confidence and tooling mature, we plan to increase this percentage, expanding Spot adoption.</p>
+<hr>
+<h2 id="key-takeaways">
+  Key Takeaways
+  <a class="heading-link" href="#key-takeaways">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<ul>
+<li><strong>Spot is powerful, but risky</strong>: The savings are real, but only if workloads are interruption-tolerant and stateless.</li>
+<li><strong>Objective rules matter</strong>: Hard constraints like shutdown time and statelessness help scale safely and avoid human judgment errors.</li>
+<li><strong>Automation is essential</strong>: Managing Spot at scale across many services is only feasible with automated tooling.</li>
+<li><strong>Stability checks are non-negotiable</strong>: Post-deployment validation ensures confidence in rollout safety.</li>
+<li><strong>Placement scoring is a game-changer</strong>: SPS provides predictive insight that helps us make informed Spot allocation decisions.</li>
+</ul>
+<hr>
+<p>If you&rsquo;re managing a large ECS footprint, <strong>Spot Instances can be a major lever</strong> for compute cost optimization—but only with the right guardrails in place. With objective eligibility criteria, an automation framework, and real-time placement scoring, Spot can become a <strong>safe, reliable, and cost-effective</strong> part of your ECS strategy.</p>
+
+      </div>
+
+
+      <footer>
+        
+
+
+        
+        
+        
+        
+        
+        
+        
+      </footer>
+    </article>
+
+    
+  </section>
+
+    </div>
+
+    <footer class="footer">
+  <section class="container">
+    ©
+    
+      2019 -
+    
+    2025
+     Aakash Singhal 
+    ·
+    
+    Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/" target="_blank" rel="noopener">Coder</a>.
+    
+  </section>
+</footer>
+
+  </main>
+
+  
+
+  
+  
+  <script src="/js/coder.min.6ae284be93d2d19dad1f02b0039508d9aab3180a12a06dcc71b0b0ef7825a317.js" integrity="sha256-auKEvpPS0Z2tHwKwA5UI2aqzGAoSoG3McbCw73gloxc="></script>
+  
+
+  
+
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</body>
+</html>
