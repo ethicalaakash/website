@@ -2,9 +2,6 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://aakashsinghal.io/</loc>
-    <lastmod>2025-07-17T21:19:54+05:30</lastmod>
-  </url><url>
     <loc>https://aakashsinghal.io/tags/aws/</loc>
     <lastmod>2025-07-17T21:19:54+05:30</lastmod>
   </url><url>
@@ -12,6 +9,9 @@
     <lastmod>2025-07-17T21:19:54+05:30</lastmod>
   </url><url>
     <loc>https://aakashsinghal.io/tags/ecs/</loc>
+    <lastmod>2025-07-17T21:19:54+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/</loc>
     <lastmod>2025-07-17T21:19:54+05:30</lastmod>
   </url><url>
     <loc>https://aakashsinghal.io/posts/spot-at-scale/</loc>

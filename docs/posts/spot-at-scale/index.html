@@ -3,7 +3,7 @@
 
 <head>
   <title>
-  Integrating Spot Instances at Scale · Aakash
+  Integrating Spot Instances at Scale · Home
 </title>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,7 +23,7 @@
   <meta name="twitter:description" content="How we safely integrated Amazon EC2 Spot Instances into our ECS clusters to optimize cloud compute costs.">
 
 <meta property="og:url" content="https://aakashsinghal.io/posts/spot-at-scale/">
-  <meta property="og:site_name" content="Aakash">
+  <meta property="og:site_name" content="Home">
   <meta property="og:title" content="Integrating Spot Instances at Scale">
   <meta property="og:description" content="How we safely integrated Amazon EC2 Spot Instances into our ECS clusters to optimize cloud compute costs.">
   <meta property="og:locale" content="en">
@@ -108,7 +108,7 @@
   <section class="container">
     
     <a class="navigation-title" href="https://aakashsinghal.io/">
-      Aakash
+      Home
     </a>
     
     
@@ -188,7 +188,7 @@
     <span class="sr-only">Link to heading</span>
   </a>
 </h1>
-<p>As part of my current role I was tasked with integrating <strong>Amazon EC2 Spot Instances</strong> within our <strong>Amazon ECS clusters</strong>. While we had already benefited from <strong>Reserved Instances</strong> and <strong>Savings Plans</strong>, Spot Instances presented an opportunity for even greater savings—often up to <strong>90% compared to On-Demand pricing</strong>.</p>
+<p>As part of my current role I was tasked with integrating <strong>Amazon EC2 Spot Instances</strong> within our <strong>Amazon ECS clusters</strong>. While we had already benefited from <strong>Reserved Instances</strong> and <strong>Savings Plans</strong>, Spot Instances presented an opportunity for even greater savings, often up to <strong>90% compared to On-Demand pricing</strong>.</p>
 <p>However, Spot Instances come with trade-offs. Their availability can fluctuate, and they can be terminated with just a two-minute warning. Safely integrating them into a production ECS environment requires thoughtful architecture, workload-level filtering, and resilient automation.</p>
 <hr>
 <h2 id="the-challenge-balancing-cost-and-reliability">
@@ -382,7 +382,7 @@
     <span class="sr-only">Link to heading</span>
   </a>
 </h2>
-<p>Even with a conservative rollout—capping Spot usage at just <strong>5–10% per cluster</strong>—we achieved <strong>meaningful compute cost savings</strong> without impacting availability or performance.</p>
+<p>Even with a conservative rollout, capping usage at 10-15% we achieved <strong>meaningful compute cost savings</strong> without impacting availability or performance.</p>
 <p>As our confidence and tooling mature, we plan to increase this percentage, expanding Spot adoption.</p>
 <hr>
 <h2 id="key-takeaways">
@@ -400,7 +400,7 @@
 <li><strong>Placement scoring is a game-changer</strong>: SPS provides predictive insight that helps us make informed Spot allocation decisions.</li>
 </ul>
 <hr>
-<p>If you&rsquo;re managing a large ECS footprint, <strong>Spot Instances can be a major lever</strong> for compute cost optimization—but only with the right guardrails in place. With objective eligibility criteria, an automation framework, and real-time placement scoring, Spot can become a <strong>safe, reliable, and cost-effective</strong> part of your ECS strategy.</p>
+<p>If you&rsquo;re managing a large ECS footprint, <strong>Spot Instances can be a major lever</strong> for compute cost optimization, but only with the right guardrails in place. With objective eligibility criteria, an automation framework, and real-time placement scoring, Spot can become a <strong>safe, reliable, and cost-effective</strong> part of your ECS strategy.</p>
 
       </div>
 
