@@ -277,13 +277,13 @@
     <span class="sr-only">Link to heading</span>
   </a>
 </h2>
-<p>To make smarter placement decisions, we introduced a <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-placement-score.html"  class="external-link" target="_blank" rel="noopener"><strong>Spot Placement Score (SPS)</strong></a> metric. This metric reflects the likelihood of acquiring Spot Instances for a specific configuration and is based on:</p>
+<p>To make smarter placement decisions, we introduced a <strong>Spot Placement Score (SPS)</strong> metric. This metric reflects the likelihood of acquiring Spot Instances for a specific configuration and is based on:</p>
 <ul>
 <li>The <strong>instance families and sizes</strong> defined in our Spot ASGs</li>
 <li>The <strong>maximum capacity</strong> targeted by those ASGs</li>
 <li><strong>Regional and zone-level availability</strong> of excess Spot capacity</li>
 </ul>
-<p>We derive this score using <strong>AWS’s Spot Placement Score API</strong>, which provides insight into AWS’s internal view of instance availability. We calculate a custom SPS for each cluster configuration and <strong>emit it as a metric</strong> to track Spot capacity health over time.</p>
+<p>We derive this score using <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-placement-score.html"  class="external-link" target="_blank" rel="noopener"><strong>AWS’s Spot Placement Score API</strong></a>, which provides insight into AWS’s internal view of instance availability. We calculate a custom SPS for each cluster configuration and <strong>emit it as a metric</strong> to track Spot capacity health over time.</p>
 <ul>
 <li><strong>High SPS</strong>: Spot capacity is readily available; interruptions are unlikely.</li>
 <li><strong>Low SPS</strong>: Increased risk of interruption; guides us to scale back Spot usage.</li>
