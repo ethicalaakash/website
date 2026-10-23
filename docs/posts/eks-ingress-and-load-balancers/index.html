@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>
+  EKS Networking Refresher, Part 1: Ingress and Load Balancers · Home
+</title>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+
+
+
+
+<meta name="author" content="Aakash Singhal">
+<meta name="description" content="How ingress has evolved, how the AWS Load Balancer Controller picks subnets, how IngressGroups share ALBs, and how a load balancer actually reaches your pods.">
+<meta name="keywords" content="blog,developer,personal">
+
+
+
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="EKS Networking Refresher, Part 1: Ingress and Load Balancers">
+	<meta name="twitter:description" content="How ingress has evolved, how the AWS Load Balancer Controller picks subnets, how IngressGroups share ALBs, and how a load balancer actually reaches your pods.">
+
+<meta property="og:url" content="https://aakashsinghal.io/posts/eks-ingress-and-load-balancers/">
+	<meta property="og:site_name" content="Home">
+	<meta property="og:title" content="EKS Networking Refresher, Part 1: Ingress and Load Balancers">
+	<meta property="og:description" content="How ingress has evolved, how the AWS Load Balancer Controller picks subnets, how IngressGroups share ALBs, and how a load balancer actually reaches your pods.">
+	<meta property="og:locale" content="en">
+	<meta property="og:type" content="article">
+		<meta property="article:section" content="posts">
+		<meta property="article:published_time" content="2026-10-23T11:30:00+05:30">
+		<meta property="article:modified_time" content="2026-10-23T11:30:00+05:30">
+		<meta property="article:tag" content="AWS">
+		<meta property="article:tag" content="EKS">
+		<meta property="article:tag" content="Kubernetes">
+		<meta property="article:tag" content="Networking">
+			<meta property="og:see_also" content="https://aakashsinghal.io/posts/eks-pod-networking-vpc-cni/">
+
+
+
+
+<link rel="canonical" href="https://aakashsinghal.io/posts/eks-ingress-and-load-balancers/">
+
+
+<link rel="preload" href="/fonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+
+
+  
+  
+  <link rel="stylesheet" href="/css/coder.min.c8e4eea149ae1dc7c61ba9b0781793711a4e657f7e07a4413f9abc46d52dffc4.css" integrity="sha256-yOTuoUmuHcfGG6mweBeTcRpOZX9&#43;B6RBP5q8RtUt/8Q=" crossorigin="anonymous" media="screen" />
+
+
+
+
+
+
+  
+    
+    
+    <link rel="stylesheet" href="/css/coder-dark.min.ad48f476275974885bdc03d5251e3cdbe1678c54a63ff772376b0ed2adc468dd.css" integrity="sha256-rUj0didZdIhb3APVJR482&#43;FnjFSmP/dyN2sO0q3EaN0=" crossorigin="anonymous" media="screen" />
+  
+
+
+
+ 
+
+
+
+
+<link rel="icon" type="image/svg+xml" href="/images/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/img/favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="/img/favicon-16x16.png" sizes="16x16">
+
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+
+<link rel="manifest" href="/site.webmanifest">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+
+
+
+
+
+
+</head>
+
+
+
+
+
+
+<body class="preload-transitions colorscheme-auto">
+  
+<div class="float-container">
+    <a id="dark-mode-toggle" class="colorscheme-toggle">
+        <i class="fa-solid fa-adjust fa-fw" aria-hidden="true"></i>
+    </a>
+</div>
+
+
+  <main class="wrapper">
+    <nav class="navigation">
+  <section class="container">
+    
+    <a class="navigation-title" href="https://aakashsinghal.io/">
+      Home
+    </a>
+    
+    
+      <input type="checkbox" id="menu-toggle" />
+      <label class="menu-button float-right" for="menu-toggle">
+        <i class="fa-solid fa-bars fa-fw" aria-hidden="true"></i>
+      </label>
+      <ul class="navigation-list">
+        
+          
+            <li class="navigation-item">
+              <a class="navigation-link " href="/posts/">Blog</a>
+            </li>
+          
+        
+        
+      </ul>
+    
+  </section>
+</nav>
+
+
+    <div class="content">
+      
+  <section class="container post">
+    <article>
+      <header>
+        <div class="post-title">
+          <h1 class="title">
+            <a class="title-link" href="https://aakashsinghal.io/posts/eks-ingress-and-load-balancers/">
+              EKS Networking Refresher, Part 1: Ingress and Load Balancers
+            </a>
+          </h1>
+        </div>
+        <div class="post-meta">
+          <div class="date">
+            <span class="posted-on">
+              <i class="fa-solid fa-calendar" aria-hidden="true"></i>
+              <time datetime="2026-10-23T11:30:00&#43;05:30">
+                October 23, 2026
+              </time>
+            </span>
+            <span class="reading-time">
+              <i class="fa-solid fa-clock" aria-hidden="true"></i>
+              11-minute read
+            </span>
+          </div>
+          
+          
+          <div class="tags">
+  <i class="fa-solid fa-tag" aria-hidden="true"></i>
+    <span class="tag">
+      <a href="/tags/aws/">AWS</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/eks/">EKS</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/kubernetes/">Kubernetes</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/networking/">Networking</a>
+    </span></div>
+
+        </div>
+      </header>
+
+      <div class="post-content">
+        
+        <h1 id="eks-networking-refresher-part-1-ingress-and-load-balancers">
+  EKS Networking Refresher, Part 1: Ingress and Load Balancers
+  <a class="heading-link" href="#eks-networking-refresher-part-1-ingress-and-load-balancers">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h1>
+<p>If you last worked on EKS a few years ago, the picture in your head is probably &ldquo;a <code>LoadBalancer</code> Service in front of an nginx ingress controller&rdquo;. That still works, but most of it has moved on. Ingress is frozen, the most popular ingress controller has been retired, and load balancers can talk to pods directly.</p>
+<p>This is the first of two posts. This one covers how traffic gets into a cluster, and how the AWS Load Balancer Controller decides where to put a load balancer. <a href="/posts/eks-pod-networking-vpc-cni/" >Part 2</a> covers how pods get their IPs, and how to stop them draining your VPC.</p>
+<hr>
+<h2 id="ingress-how-the-model-evolved">
+  Ingress: How the Model Evolved
+  <a class="heading-link" href="#ingress-how-the-model-evolved">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<h3 id="the-classic-model">
+  The classic model
+  <a class="heading-link" href="#the-classic-model">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<pre tabindex="0"><code>Internet -&gt; L4 cloud LB (Service type=LoadBalancer)
+         -&gt; ingress controller pods (nginx / Kong / Traefik / Envoy)
+         -&gt; backend pods
+</code></pre><p>One cloud load balancer sits in front of a proxy that runs inside the cluster. <code>Ingress</code> objects are just configuration for that proxy, and all the routing logic (host, path, rewrites, auth, rate limits) lives in the proxy pods.</p>
+<h3 id="what-changed">
+  What changed
+  <a class="heading-link" href="#what-changed">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p><strong>Ingress is frozen, Gateway API is the successor.</strong> The <code>Ingress</code> API is feature-frozen. It only understands HTTP host and path matching, so everything else (rewrites, timeouts, auth, canaries) ended up in vendor-specific annotations. Gateway API, which went GA in October 2023, replaces that with role-oriented resources:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Resource</th>
+					<th>Purpose</th>
+					<th>Typical owner</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>GatewayClass</code></td>
+					<td>Which implementation to use</td>
+					<td>Infrastructure provider</td>
+			</tr>
+			<tr>
+					<td><code>Gateway</code></td>
+					<td>Listeners, ports, TLS</td>
+					<td>Platform team</td>
+			</tr>
+			<tr>
+					<td><code>HTTPRoute</code>, <code>GRPCRoute</code></td>
+					<td>Routing rules</td>
+					<td>App teams</td>
+			</tr>
+	</tbody>
+</table>
+<p>It has typed fields for header matching, weighted splits, redirects and cross-namespace attachment, which replaces most of the annotation soup. One caveat: GA covered <code>Gateway</code>, <code>GatewayClass</code> and <code>HTTPRoute</code>. Other route types, such as <code>TCPRoute</code>, are still in the experimental channel, so check the status of what you need before you commit to it.</p>
+<p><strong>ingress-nginx has been retired.</strong> The community ingress-nginx project was announced for retirement in November 2025, with best-effort maintenance continuing only until March 2026. After that there are no further releases, no bug fixes and no security patches. If you still run it, treat it as unmaintained software and plan the move.</p>
+<p><strong>There are two ways to route.</strong> The real decision is whether routing happens in a proxy you run, or in the cloud load balancer:</p>
+<table>
+	<thead>
+			<tr>
+					<th></th>
+					<th>In-cluster proxy</th>
+					<th>Cloud-native LB controller</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>Data path</td>
+					<td>L4 LB -&gt; proxy pods -&gt; backend pods</td>
+					<td>L7 cloud LB -&gt; backend pods directly</td>
+			</tr>
+			<tr>
+					<td>Where routing lives</td>
+					<td>In the proxy</td>
+					<td>In the cloud LB (listener rules, target groups)</td>
+			</tr>
+			<tr>
+					<td>Examples</td>
+					<td>Kong, APISIX, Traefik, Envoy Gateway, Istio</td>
+					<td>AWS Load Balancer Controller, GKE Ingress</td>
+			</tr>
+			<tr>
+					<td>Pros</td>
+					<td>Portable, rich features, fast config changes</td>
+					<td>No proxy to run, native WAF/ACM/auth, managed scaling</td>
+			</tr>
+			<tr>
+					<td>Cons</td>
+					<td>You operate and scale the proxy</td>
+					<td>Cloud-specific annotations, rule and target limits, slower reconcile</td>
+			</tr>
+	</tbody>
+</table>
+<p>A common production pattern uses both. A cloud ALB or NLB handles TLS, WAF and public entry, and sits in front of an in-cluster API gateway (Kong, APISIX, Envoy) that handles auth and rate limiting. Each layer does what it is good at.</p>
+<p>Some supporting pieces have become standard along the way:</p>
+<ul>
+<li><strong>cert-manager</strong> for in-cluster certificates (or ACM when TLS ends at an AWS load balancer).</li>
+<li><strong>external-dns</strong> to create DNS records from ingress and route hostnames.</li>
+<li><strong>Shared gateways</strong> instead of one load balancer per app, to cut cost.</li>
+<li><strong>Sidecar-less service mesh</strong> (Istio ambient, Cilium) for east-west traffic.</li>
+</ul>
+<hr>
+<h2 id="the-aws-load-balancer-controller">
+  The AWS Load Balancer Controller
+  <a class="heading-link" href="#the-aws-load-balancer-controller">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>The AWS Load Balancer Controller (LBC) turns Kubernetes objects into real AWS resources:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Kubernetes object</th>
+					<th>AWS resource</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>Ingress</code> (class <code>alb</code>)</td>
+					<td>Application Load Balancer, listeners, rules, target groups</td>
+			</tr>
+			<tr>
+					<td><code>Service</code> type <code>LoadBalancer</code> (with the right annotations)</td>
+					<td>Network Load Balancer</td>
+			</tr>
+	</tbody>
+</table>
+<p>A typical install is the <code>aws-load-balancer-controller</code> Helm chart in <code>kube-system</code>, with an IAM role bound to its service account (IRSA or EKS Pod Identity). The flags that matter are <code>--cluster-name</code>, <code>--ingress-class</code> and <code>--aws-vpc-id</code>, and the chart creates the <code>alb</code> <code>IngressClass</code> for you.</p>
+<p>The important difference from an in-cluster proxy is that <strong>there is no proxy in the data path</strong>. Routing happens inside the ALB itself.</p>
+<h3 id="example-a-public-alb-ingress">
+  Example: a public ALB ingress
+  <a class="heading-link" href="#example-a-public-alb-ingress">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">apiVersion</span>: <span style="color:#ae81ff">networking.k8s.io/v1</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">kind</span>: <span style="color:#ae81ff">Ingress</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">name</span>: <span style="color:#ae81ff">public-gateway</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">namespace</span>: <span style="color:#ae81ff">gateway</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">annotations</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/scheme</span>: <span style="color:#ae81ff">internet-facing</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/target-type</span>: <span style="color:#ae81ff">ip</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/subnets</span>: <span style="color:#ae81ff">subnet-pub-a, subnet-pub-b, subnet-pub-c</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/listen-ports</span>: <span style="color:#e6db74">&#39;[{&#34;HTTP&#34;:80},{&#34;HTTPS&#34;:443}]&#39;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/ssl-redirect</span>: <span style="color:#e6db74">&#34;443&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/certificate-arn</span>: <span style="color:#ae81ff">arn:aws:acm:&lt;region&gt;:&lt;account-id&gt;:certificate/&lt;cert-id&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/backend-protocol</span>: <span style="color:#ae81ff">HTTP</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/healthcheck-path</span>: <span style="color:#ae81ff">/status</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/healthcheck-port</span>: <span style="color:#e6db74">&#34;9080&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/healthcheck-protocol</span>: <span style="color:#ae81ff">HTTP</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">ingressClassName</span>: <span style="color:#ae81ff">alb</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">rules</span>:
+</span></span><span style="display:flex;"><span>  - <span style="color:#f92672">http</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">paths</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">path</span>: <span style="color:#ae81ff">/</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">pathType</span>: <span style="color:#ae81ff">Prefix</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">backend</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">service</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">name</span>: <span style="color:#ae81ff">api-gateway</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">port</span>:
+</span></span><span style="display:flex;"><span>              <span style="color:#f92672">number</span>: <span style="color:#ae81ff">80</span>
+</span></span></code></pre></div><p>Reading it top to bottom: internet to a public ALB across three AZs, HTTPS ends at the ALB with an ACM certificate, plain HTTP goes on to the gateway pod IPs, and health checks hit <code>/status</code>. A single catch-all rule sends everything to the gateway, which does the real routing.</p>
+<h3 id="a-failure-mode-worth-knowing">
+  A failure mode worth knowing
+  <a class="heading-link" href="#a-failure-mode-worth-knowing">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>An <code>Ingress</code> can point at a Service that does not exist, for example because the gateway Deployment was scaled to zero. The ALB is still created, but its target group has no healthy targets and every request returns a 503. When debugging, check target health in the ALB target group, not just whether the Ingress has an address.</p>
+<hr>
+<h2 id="subnet-discovery-for-load-balancers">
+  Subnet Discovery for Load Balancers
+  <a class="heading-link" href="#subnet-discovery-for-load-balancers">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>An ALB or NLB needs network interfaces in VPC subnets. Kubernetes knows nothing about subnets, so the controller has to decide which ones to use. You can tell it explicitly, or you can let it discover them from tags. Discovery is worth the effort because it keeps subnet IDs out of every app team&rsquo;s manifests: the platform team tags subnets once, and internet-facing load balancers land in public subnets while internal ones land in private subnets, spread across AZs.</p>
+<h3 id="the-tags">
+  The tags
+  <a class="heading-link" href="#the-tags">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<table>
+	<thead>
+			<tr>
+					<th>Tag</th>
+					<th>Meaning</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>kubernetes.io/role/elb = 1</code></td>
+					<td>Candidate subnet for <strong>internet-facing</strong> load balancers</td>
+			</tr>
+			<tr>
+					<td><code>kubernetes.io/role/internal-elb = 1</code></td>
+					<td>Candidate subnet for <strong>internal</strong> load balancers</td>
+			</tr>
+			<tr>
+					<td><code>kubernetes.io/cluster/&lt;cluster-name&gt; = shared</code> or <code>owned</code></td>
+					<td>Optional. Scopes a subnet to one cluster, and is needed if subnets are shared between clusters</td>
+			</tr>
+	</tbody>
+</table>
+<p>The role tags work with a value of <code>1</code> or an empty value.</p>
+<h3 id="how-the-controller-chooses">
+  How the controller chooses
+  <a class="heading-link" href="#how-the-controller-chooses">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ol>
+<li>If the Ingress has <code>alb.ingress.kubernetes.io/subnets</code> (or a Service has <code>service.beta.kubernetes.io/aws-load-balancer-subnets</code>), those subnets are used and nothing is discovered.</li>
+<li>Otherwise the controller lists subnets in the cluster&rsquo;s VPC and keeps the ones with the role tag that matches the load balancer&rsquo;s scheme. It then drops subnets that carry a cluster tag for a different cluster, and subnets with fewer than 8 free IP addresses.</li>
+<li>If several subnets in the same AZ are still eligible, the controller picks one per AZ. A subnet tagged for the current cluster wins, and any remaining tie is broken by the lowest subnet ID, compared as a string.</li>
+</ol>
+<p>That last rule is deterministic, but it is not something you want to depend on. It is easy to end up with a load balancer in a subnet you did not intend, purely because of how an ID sorts.</p>
+<h3 id="common-gotchas">
+  Common gotchas
+  <a class="heading-link" href="#common-gotchas">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li><strong>Public subnets missing <code>elb=1</code>.</strong> Internet-facing load balancers fail to discover anything, and teams work around it with hardcoded subnet annotations that nobody revisits.</li>
+<li><strong>Two tagged subnets in one AZ</strong>, such as a large one and a small one. Which one the load balancer lands on depends on the tie-break above, and a small subnet can run out of IPs. An ALB needs free addresses in each of its subnets and uses more of them as it scales up.</li>
+<li><strong>Hardcoded subnet IDs</strong> go stale when infrastructure is rebuilt.</li>
+</ul>
+<h3 id="what-i-would-do">
+  What I would do
+  <a class="heading-link" href="#what-i-would-do">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ol>
+<li>Tag public subnets <code>elb=1</code> and private subnets <code>internal-elb=1</code> through infrastructure as code, and rely on discovery.</li>
+<li>Tag exactly one subnet per AZ per tier, so the tie-break never matters.</li>
+<li>Give load balancer subnets room. A /24 or larger is a reasonable floor.</li>
+<li>Use the cluster tag when subnets are shared across clusters.</li>
+<li>Keep explicit subnet annotations for real exceptions only.</li>
+<li>Consider <code>IngressClassParams</code>, which can set <code>scheme</code> and <code>subnets</code> once at the IngressClass level instead of on every Ingress.</li>
+</ol>
+<hr>
+<h2 id="ingress-groups-one-alb-or-many">
+  Ingress Groups: One ALB or Many
+  <a class="heading-link" href="#ingress-groups-one-alb-or-many">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>By default, <strong>every <code>Ingress</code> creates its own ALB</strong>. That gets expensive and sprawls quickly, because each ALB has its own hourly cost, its own IPs in your subnets and its own security group.</p>
+<h3 id="ingressgroup">
+  IngressGroup
+  <a class="heading-link" href="#ingressgroup">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>Annotate Ingresses with the same group name and they merge into <strong>one ALB</strong>. Each Ingress contributes its own host and path rules.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">annotations</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/group.name</span>: <span style="color:#ae81ff">shared-internal</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/group.order</span>: <span style="color:#e6db74">&#34;100&#34;</span>   <span style="color:#75715e"># rule priority within the group</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">alb.ingress.kubernetes.io/scheme</span>: <span style="color:#ae81ff">internal</span>
+</span></span></code></pre></div><p>This is the closest equivalent to the old &ldquo;one load balancer for everything&rdquo; setup, except the routing now lives in the ALB instead of a proxy.</p>
+<h3 id="trade-offs">
+  Trade-offs
+  <a class="heading-link" href="#trade-offs">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li>All Ingresses in a group share one set of listeners and one certificate set.</li>
+<li>The scheme (internal or internet-facing) is per ALB, so you cannot mix schemes in a group.</li>
+<li>A broken Ingress can block reconciliation for the whole group.</li>
+<li>ALBs have a quota on rules per listener (100 by default, and adjustable). A group with dozens of Ingresses and many rules can get close, so check the current quota for your account.</li>
+<li>Fewer ALBs means lower cost and fewer IPs consumed in load balancer subnets.</li>
+</ul>
+<h3 id="a-sensible-layout">
+  A sensible layout
+  <a class="heading-link" href="#a-sensible-layout">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<table>
+	<thead>
+			<tr>
+					<th>ALB</th>
+					<th>Scheme</th>
+					<th>Contents</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>Shared internal group</td>
+					<td>internal</td>
+					<td>The bulk of service Ingresses</td>
+			</tr>
+			<tr>
+					<td>One or two small groups</td>
+					<td>internal</td>
+					<td>Anything needing isolation (different certificate, different security group, rule limit pressure)</td>
+			</tr>
+			<tr>
+					<td>Public ALB</td>
+					<td>internet-facing</td>
+					<td>Only what truly must be public, ideally just the API gateway</td>
+			</tr>
+	</tbody>
+</table>
+<p>Keeping public and internal ALBs separate is normal and desirable.</p>
+<hr>
+<h2 id="how-a-load-balancer-reaches-pods">
+  How a Load Balancer Reaches Pods
+  <a class="heading-link" href="#how-a-load-balancer-reaches-pods">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<h3 id="the-service-is-for-discovery-not-the-data-path">
+  The Service is for discovery, not the data path
+  <a class="heading-link" href="#the-service-is-for-discovery-not-the-data-path">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>An <code>Ingress</code> names a Service, but that Service is mostly how the controller discovers backends: the selector, the ports and the EndpointSlices. In almost every implementation, <strong>the ClusterIP is not in the data path</strong>.</p>
+<table>
+	<thead>
+			<tr>
+					<th>Implementation</th>
+					<th>What receives the traffic</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>In-cluster proxies (Kong, Traefik, Envoy)</td>
+					<td>They read EndpointSlices and send <strong>directly to pod IPs</strong>, bypassing kube-proxy</td>
+			</tr>
+			<tr>
+					<td>AWS LBC, <code>target-type: ip</code></td>
+					<td>The ALB registers <strong>pod IPs as targets</strong> and talks to pods directly</td>
+			</tr>
+			<tr>
+					<td>AWS LBC, <code>target-type: instance</code></td>
+					<td>The ALB targets <strong>node IPs on a NodePort</strong>, and kube-proxy forwards to a pod</td>
+			</tr>
+	</tbody>
+</table>
+<h3 id="whether-it-works-depends-on-the-cni">
+  Whether it works depends on the CNI
+  <a class="heading-link" href="#whether-it-works-depends-on-the-cni">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<table>
+	<thead>
+			<tr>
+					<th>CNI</th>
+					<th>Pod IP is</th>
+					<th>Direct to pod possible</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>AWS VPC CNI</td>
+					<td>A real VPC IP (a secondary IP on an ENI)</td>
+					<td>Yes</td>
+			</tr>
+			<tr>
+					<td>GKE VPC-native, Azure CNI</td>
+					<td>A real VPC or VNet IP</td>
+					<td>Yes</td>
+			</tr>
+			<tr>
+					<td>Calico or similar with an IPIP/VXLAN overlay</td>
+					<td>A virtual address, encapsulated between nodes</td>
+					<td>No, the cloud network has no route to it</td>
+			</tr>
+			<tr>
+					<td>Calico with BGP and no encapsulation</td>
+					<td>Routable if BGP peers with the fabric</td>
+					<td>Yes, in on-prem or specially built setups</td>
+			</tr>
+	</tbody>
+</table>
+<p>With an overlay CNI the load balancer can only target node IPs, so you are stuck with <code>instance</code> mode: LB, then NodePort, then kube-proxy, then pod. On EKS with the VPC CNI you can use <code>ip</code> mode and skip those extra hops. You can also run Calico on EKS in policy-only mode while the VPC CNI still handles addressing. If Calico is the overlay CNI instead, <code>ip</code> mode will not work.</p>
+<h3 id="operational-consequences-of-direct-to-pod">
+  Operational consequences of direct-to-pod
+  <a class="heading-link" href="#operational-consequences-of-direct-to-pod">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li><strong>Rollouts.</strong> A pod can be deregistered from the target group while the load balancer is still sending it traffic, which causes brief 5xx errors. Mitigate with a <code>preStop</code> sleep, an adequate <code>terminationGracePeriodSeconds</code>, and pod readiness gates, where the LBC holds a pod &ldquo;ready&rdquo; until its target is healthy.</li>
+<li><strong>Security groups.</strong> Pods must accept traffic from the load balancer&rsquo;s security group. The LBC normally manages its own rules for this, so look at what it creates before adding manual ones.</li>
+<li><strong>IP consumption.</strong> With the VPC CNI, pods use real VPC IPs, so every pod behind an <code>ip</code> mode target spends a VPC address. <a href="/posts/eks-pod-networking-vpc-cni/" >Part 2</a> is about how to keep that from becoming a problem.</li>
+</ul>
+<hr>
+<h2 id="best-practices-checklist">
+  Best Practices Checklist
+  <a class="heading-link" href="#best-practices-checklist">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p><strong>Load balancing</strong></p>
+<ul>
+<li>Use Gateway API for new work where the controller supports it, and treat <code>Ingress</code> as legacy.</li>
+<li>Put a load balancer in front for TLS and WAF, and an in-cluster gateway behind it if you need API features.</li>
+<li>Use IngressGroups to share ALBs, with a separate public ALB.</li>
+<li>Use <code>target-type: ip</code> where pod IPs are VPC-routable.</li>
+<li>Add <code>preStop</code> sleeps, a sensible termination grace period and pod readiness gates to avoid 5xx errors during rollouts.</li>
+<li>Keep external-dns and cert-manager (or ACM) in the picture so DNS and certificates are not manual.</li>
+</ul>
+<p><strong>Subnets</strong></p>
+<ul>
+<li><code>elb=1</code> on public subnets and <code>internal-elb=1</code> on private subnets, exactly one per AZ per tier.</li>
+<li>Size load balancer subnets at /24 or larger.</li>
+<li>Avoid hardcoded subnet IDs except for deliberate exceptions.</li>
+</ul>
+<hr>
+<h2 id="read-only-commands-for-inspecting-a-cluster">
+  Read-Only Commands for Inspecting a Cluster
+  <a class="heading-link" href="#read-only-commands-for-inspecting-a-cluster">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>These commands only read state, so they are safe to run against a live cluster.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># Which load balancer controller and ingress classes exist</span>
+</span></span><span style="display:flex;"><span>helm list -A | grep -i -E <span style="color:#e6db74">&#39;load-balancer|ingress|gateway&#39;</span>
+</span></span><span style="display:flex;"><span>kubectl get ingressclass
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Ingresses, their scheme and groups</span>
+</span></span><span style="display:flex;"><span>kubectl get ingress -A -o jsonpath<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;{range .items[*]}{.metadata.namespace}/{.metadata.name}{&#34;\t&#34;}{.metadata.annotations.alb\.ingress\.kubernetes\.io/scheme}{&#34;\t&#34;}{.metadata.annotations.alb\.ingress\.kubernetes\.io/group\.name}{&#34;\n&#34;}{end}&#39;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Does the Service behind an Ingress actually exist</span>
+</span></span><span style="display:flex;"><span>kubectl get svc &lt;name&gt; -n &lt;namespace&gt;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Subnets and their discovery tags</span>
+</span></span><span style="display:flex;"><span>aws ec2 describe-subnets --filters Name<span style="color:#f92672">=</span>vpc-id,Values<span style="color:#f92672">=</span>&lt;vpc-id&gt; <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>  --query <span style="color:#e6db74">&#39;Subnets[].{id:SubnetId,az:AvailabilityZone,cidr:CidrBlock,elb:Tags[?Key==`kubernetes.io/role/elb`]|[0].Value,internal:Tags[?Key==`kubernetes.io/role/internal-elb`]|[0].Value}&#39;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Target health for an ALB target group</span>
+</span></span><span style="display:flex;"><span>aws elbv2 describe-target-health --target-group-arn &lt;target-group-arn&gt;
+</span></span></code></pre></div><hr>
+<h2 id="key-takeaways">
+  Key Takeaways
+  <a class="heading-link" href="#key-takeaways">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<ul>
+<li><strong>Pick where routing lives.</strong> Either in a proxy you run, or in the cloud load balancer. Many production setups use both.</li>
+<li><strong>Tag subnets once, and tag them cleanly.</strong> One subnet per AZ per tier makes discovery boring, which is what you want.</li>
+<li><strong>Share ALBs with IngressGroups</strong>, and keep the public one separate.</li>
+<li><strong><code>target-type: ip</code> removes hops</strong>, but it makes rollouts and security groups your problem.</li>
+</ul>
+<p>Next up: <a href="/posts/eks-pod-networking-vpc-cni/" >Part 2, Pod Networking with the VPC CNI</a>.</p>
+
+      </div>
+
+
+      <footer>
+        
+
+<section class="see-also">
+  
+    
+    
+    
+  
+</section>
+
+
+        
+        
+        
+        
+        
+        
+        
+      </footer>
+    </article>
+
+    
+  </section>
+
+    </div>
+
+    <footer class="footer">
+  <section class="container">
+    ©
+    
+      2019 -
+    
+    2026
+     Aakash Singhal 
+    ·
+    
+    Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/" target="_blank" rel="noopener">Coder</a>.
+    
+  </section>
+</footer>
+
+  </main>
+
+  
+
+  
+  
+  <script src="/js/coder.min.6ae284be93d2d19dad1f02b0039508d9aab3180a12a06dcc71b0b0ef7825a317.js" integrity="sha256-auKEvpPS0Z2tHwKwA5UI2aqzGAoSoG3McbCw73gloxc="></script>
+  
+
+  
+
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</body>
+</html>
