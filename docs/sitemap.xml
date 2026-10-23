@@ -3,7 +3,37 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://aakashsinghal.io/tags/aws/</loc>
-    <lastmod>2025-07-17T21:19:54+05:30</lastmod>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/tags/eks/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/series/eks-networking-refresher/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/posts/eks-pod-networking-vpc-cni/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/tags/kubernetes/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/tags/networking/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/posts/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/series/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/tags/</loc>
+    <lastmod>2026-10-23T12:00:00+05:30</lastmod>
+  </url><url>
+    <loc>https://aakashsinghal.io/posts/eks-ingress-and-load-balancers/</loc>
+    <lastmod>2026-10-23T11:30:00+05:30</lastmod>
   </url><url>
     <loc>https://aakashsinghal.io/tags/cloud-cost-optimization/</loc>
     <lastmod>2025-07-17T21:19:54+05:30</lastmod>
@@ -11,25 +41,14 @@
     <loc>https://aakashsinghal.io/tags/ecs/</loc>
     <lastmod>2025-07-17T21:19:54+05:30</lastmod>
   </url><url>
-    <loc>https://aakashsinghal.io/</loc>
-    <lastmod>2025-07-17T21:19:54+05:30</lastmod>
-  </url><url>
     <loc>https://aakashsinghal.io/posts/spot-at-scale/</loc>
-    <lastmod>2025-07-17T21:19:54+05:30</lastmod>
-  </url><url>
-    <loc>https://aakashsinghal.io/posts/</loc>
     <lastmod>2025-07-17T21:19:54+05:30</lastmod>
   </url><url>
     <loc>https://aakashsinghal.io/tags/spot-instances/</loc>
     <lastmod>2025-07-17T21:19:54+05:30</lastmod>
   </url><url>
-    <loc>https://aakashsinghal.io/tags/</loc>
-    <lastmod>2025-07-17T21:19:54+05:30</lastmod>
-  </url><url>
     <loc>https://aakashsinghal.io/authors/</loc>
   </url><url>
     <loc>https://aakashsinghal.io/categories/</loc>
-  </url><url>
-    <loc>https://aakashsinghal.io/series/</loc>
   </url>
 </urlset>

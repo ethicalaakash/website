@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>
+  EKS Networking Refresher, Part 2: Pod Networking with the VPC CNI · Home
+</title>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+
+
+
+
+<meta name="author" content="Aakash Singhal">
+<meta name="description" content="How the VPC CNI hands out pod IPs, how a secondary CIDR with custom networking and ENIConfig keeps them from draining your VPC, and what SNAT does to traffic leaving it.">
+<meta name="keywords" content="blog,developer,personal">
+
+
+
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="EKS Networking Refresher, Part 2: Pod Networking with the VPC CNI">
+	<meta name="twitter:description" content="How the VPC CNI hands out pod IPs, how a secondary CIDR with custom networking and ENIConfig keeps them from draining your VPC, and what SNAT does to traffic leaving it.">
+
+<meta property="og:url" content="https://aakashsinghal.io/posts/eks-pod-networking-vpc-cni/">
+	<meta property="og:site_name" content="Home">
+	<meta property="og:title" content="EKS Networking Refresher, Part 2: Pod Networking with the VPC CNI">
+	<meta property="og:description" content="How the VPC CNI hands out pod IPs, how a secondary CIDR with custom networking and ENIConfig keeps them from draining your VPC, and what SNAT does to traffic leaving it.">
+	<meta property="og:locale" content="en">
+	<meta property="og:type" content="article">
+		<meta property="article:section" content="posts">
+		<meta property="article:published_time" content="2026-10-23T12:00:00+05:30">
+		<meta property="article:modified_time" content="2026-10-23T12:00:00+05:30">
+		<meta property="article:tag" content="AWS">
+		<meta property="article:tag" content="EKS">
+		<meta property="article:tag" content="Kubernetes">
+		<meta property="article:tag" content="Networking">
+			<meta property="og:see_also" content="https://aakashsinghal.io/posts/eks-ingress-and-load-balancers/">
+
+
+
+
+<link rel="canonical" href="https://aakashsinghal.io/posts/eks-pod-networking-vpc-cni/">
+
+
+<link rel="preload" href="/fonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+
+
+  
+  
+  <link rel="stylesheet" href="/css/coder.min.c8e4eea149ae1dc7c61ba9b0781793711a4e657f7e07a4413f9abc46d52dffc4.css" integrity="sha256-yOTuoUmuHcfGG6mweBeTcRpOZX9&#43;B6RBP5q8RtUt/8Q=" crossorigin="anonymous" media="screen" />
+
+
+
+
+
+
+  
+    
+    
+    <link rel="stylesheet" href="/css/coder-dark.min.ad48f476275974885bdc03d5251e3cdbe1678c54a63ff772376b0ed2adc468dd.css" integrity="sha256-rUj0didZdIhb3APVJR482&#43;FnjFSmP/dyN2sO0q3EaN0=" crossorigin="anonymous" media="screen" />
+  
+
+
+
+ 
+
+
+
+
+<link rel="icon" type="image/svg+xml" href="/images/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="/img/favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="/img/favicon-16x16.png" sizes="16x16">
+
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+
+<link rel="manifest" href="/site.webmanifest">
+<link rel="mask-icon" href="/images/safari-pinned-tab.svg" color="#5bbad5">
+
+
+
+
+
+
+
+
+
+</head>
+
+
+
+
+
+
+<body class="preload-transitions colorscheme-auto">
+  
+<div class="float-container">
+    <a id="dark-mode-toggle" class="colorscheme-toggle">
+        <i class="fa-solid fa-adjust fa-fw" aria-hidden="true"></i>
+    </a>
+</div>
+
+
+  <main class="wrapper">
+    <nav class="navigation">
+  <section class="container">
+    
+    <a class="navigation-title" href="https://aakashsinghal.io/">
+      Home
+    </a>
+    
+    
+      <input type="checkbox" id="menu-toggle" />
+      <label class="menu-button float-right" for="menu-toggle">
+        <i class="fa-solid fa-bars fa-fw" aria-hidden="true"></i>
+      </label>
+      <ul class="navigation-list">
+        
+          
+            <li class="navigation-item">
+              <a class="navigation-link " href="/posts/">Blog</a>
+            </li>
+          
+        
+        
+      </ul>
+    
+  </section>
+</nav>
+
+
+    <div class="content">
+      
+  <section class="container post">
+    <article>
+      <header>
+        <div class="post-title">
+          <h1 class="title">
+            <a class="title-link" href="https://aakashsinghal.io/posts/eks-pod-networking-vpc-cni/">
+              EKS Networking Refresher, Part 2: Pod Networking with the VPC CNI
+            </a>
+          </h1>
+        </div>
+        <div class="post-meta">
+          <div class="date">
+            <span class="posted-on">
+              <i class="fa-solid fa-calendar" aria-hidden="true"></i>
+              <time datetime="2026-10-23T12:00:00&#43;05:30">
+                October 23, 2026
+              </time>
+            </span>
+            <span class="reading-time">
+              <i class="fa-solid fa-clock" aria-hidden="true"></i>
+              8-minute read
+            </span>
+          </div>
+          
+          
+          <div class="tags">
+  <i class="fa-solid fa-tag" aria-hidden="true"></i>
+    <span class="tag">
+      <a href="/tags/aws/">AWS</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/eks/">EKS</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/kubernetes/">Kubernetes</a>
+    </span>
+      <span class="separator">•</span>
+    <span class="tag">
+      <a href="/tags/networking/">Networking</a>
+    </span></div>
+
+        </div>
+      </header>
+
+      <div class="post-content">
+        
+        <h1 id="eks-networking-refresher-part-2-pod-networking-with-the-vpc-cni">
+  EKS Networking Refresher, Part 2: Pod Networking with the VPC CNI
+  <a class="heading-link" href="#eks-networking-refresher-part-2-pod-networking-with-the-vpc-cni">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h1>
+<p><a href="/posts/eks-ingress-and-load-balancers/" >Part 1</a> covered how traffic gets into an EKS cluster. This part is about the other half: how pods get their IP addresses, and what happens when those addresses start running out. It covers the secondary IP range, custom networking, <code>ENIConfig</code>, security groups and SNAT.</p>
+<hr>
+<h2 id="why-pod-ips-are-a-problem-on-eks">
+  Why Pod IPs Are a Problem on EKS
+  <a class="heading-link" href="#why-pod-ips-are-a-problem-on-eks">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>In Part 1 we saw that an ALB in <code>target-type: ip</code> mode registers <strong>pod IPs as targets</strong> and talks to pods directly. That only works because the AWS VPC CNI gives every pod a real VPC IP, taken as a secondary address on an ENI.</p>
+<p>That is convenient, but it has a cost. The VPC&rsquo;s primary CIDR is usually part of a corporate-routable range that is shared with peered VPCs, Transit Gateway and on-prem networks. A busy node can hold dozens of pods, so that range drains quickly, and you cannot get it back without renumbering.</p>
+<hr>
+<h2 id="vpc-cni-and-the-secondary-ip-range">
+  VPC CNI and the Secondary IP Range
+  <a class="heading-link" href="#vpc-cni-and-the-secondary-ip-range">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<h3 id="the-fix-a-secondary-cidr-just-for-pods">
+  The fix: a secondary CIDR just for pods
+  <a class="heading-link" href="#the-fix-a-secondary-cidr-just-for-pods">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ol>
+<li>Attach a secondary CIDR to the VPC. The <code>100.64.0.0/10</code> block (the CG-NAT range) is popular because it is large and rarely clashes with corporate ranges.</li>
+<li>Create one subnet per AZ in that CIDR. These are the &ldquo;pod subnets&rdquo;.</li>
+<li>Turn on custom networking in the CNI and tell it, per AZ, which pod subnet to use (see the ENIConfig section below).</li>
+</ol>
+<h3 id="example-layout">
+  Example layout
+  <a class="heading-link" href="#example-layout">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<pre tabindex="0"><code>VPC
+ |- Primary CIDR   10.0.0.0/16        (routable beyond the VPC)
+ |    |- public   subnets   10.0.0.0/24   x 3 AZs   -&gt; internet-facing LBs
+ |    |- private  subnets   10.0.16.0/20  x 3 AZs   -&gt; nodes, internal LBs
+ |
+ |- Secondary CIDR 100.64.0.0/16      (VPC-only, not advertised outside)
+      |- pod subnets        100.64.0.0/18 x 3 AZs   -&gt; pod IPs only, no ELB tags
+</code></pre><p>Note that the pod subnets carry no <code>elb</code> tags, so the <a href="/posts/eks-ingress-and-load-balancers/#subnet-discovery-for-load-balancers" >load balancer subnet discovery from Part 1</a> never picks them up.</p>
+<h3 id="how-it-works-at-runtime">
+  How it works at runtime
+  <a class="heading-link" href="#how-it-works-at-runtime">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li>The node&rsquo;s <strong>primary ENI</strong> stays in the normal private subnet and provides the node IP.</li>
+<li>With custom networking on, the CNI does <strong>not</strong> use the primary ENI for pod IPs. It attaches <strong>secondary ENIs</strong> in the pod subnet named by the node&rsquo;s <code>ENIConfig</code>.</li>
+<li>With prefix delegation enabled, each ENI slot gets a <code>/28</code> prefix (16 IPs) from that subnet and pods draw from those prefixes. This greatly increases pods per node.</li>
+<li>Pod traffic <strong>inside the VPC</strong> (pod to pod, ALB to pod, pod to a database in the VPC) keeps the pod IP as its source.</li>
+<li>Pod traffic <strong>leaving the VPC</strong> (internet, peering, Transit Gateway, on-prem) is source-NATed to the node&rsquo;s primary IP. More on that below.</li>
+</ul>
+<h3 id="key-cni-settings">
+  Key CNI settings
+  <a class="heading-link" href="#key-cni-settings">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<table>
+	<thead>
+			<tr>
+					<th>Setting</th>
+					<th>Meaning</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG=true</code></td>
+					<td>Enable custom networking: pods use the <code>ENIConfig</code> subnet, not the node&rsquo;s</td>
+			</tr>
+			<tr>
+					<td><code>ENI_CONFIG_LABEL_DEF=topology.kubernetes.io/zone</code></td>
+					<td>Which node label selects the <code>ENIConfig</code></td>
+			</tr>
+			<tr>
+					<td><code>ENABLE_PREFIX_DELEGATION=true</code></td>
+					<td>Assign <code>/28</code> prefixes instead of individual IPs</td>
+			</tr>
+			<tr>
+					<td><code>WARM_PREFIX_TARGET</code>, <code>WARM_ENI_TARGET</code>, <code>WARM_IP_TARGET</code></td>
+					<td>How many addresses to keep warm</td>
+			</tr>
+			<tr>
+					<td><code>AWS_VPC_K8S_CNI_EXTERNALSNAT</code></td>
+					<td><code>false</code> (the default) means the CNI does the SNAT. <code>true</code> means you rely on an external NAT</td>
+			</tr>
+	</tbody>
+</table>
+<h3 id="what-you-need-to-create">
+  What you need to create
+  <a class="heading-link" href="#what-you-need-to-create">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ol>
+<li>The secondary CIDR and one pod subnet per AZ, usually in Terraform. Pod subnets only need the local route, because off-VPC traffic is SNAT&rsquo;d to the node IP.</li>
+<li>One <code>ENIConfig</code> per AZ.</li>
+<li>The CNI settings above, applied through the EKS managed add-on configuration or by editing the <code>aws-node</code> DaemonSet.</li>
+<li><strong>Replacement or new nodes.</strong> Existing nodes keep their old ENIs, so roll your nodes after enabling this.</li>
+</ol>
+<h3 id="trade-offs-and-alternatives">
+  Trade-offs and alternatives
+  <a class="heading-link" href="#trade-offs-and-alternatives">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li>Anything outside the VPC cannot address pods directly. This is usually fine because traffic goes through a load balancer or a service anyway.</li>
+<li>Pods on a node no longer use the primary ENI, so adjust <code>max-pods</code> if you are not using prefix delegation.</li>
+<li>A missing or mismatched <code>ENIConfig</code> leaves pods stuck in <code>ContainerCreating</code>.</li>
+<li>There are other ways to solve the same problem: prefix delegation on its own (fewer wasted IPs per node), or an IPv6 cluster, where address exhaustion goes away.</li>
+</ul>
+<hr>
+<h2 id="eniconfig">
+  ENIConfig
+  <a class="heading-link" href="#eniconfig">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p><code>ENIConfig</code> tells the VPC CNI which <strong>subnet and security groups</strong> to use for the extra ENIs that hold pod IPs. Without custom networking, pod ENIs go in the same subnet and use the same security groups as the node&rsquo;s primary ENI. With it on, the CNI has to be told where else to put them, and <code>ENIConfig</code> is how. The environment variable only says &ldquo;do not use the node&rsquo;s subnet for pods&rdquo;. The <code>ENIConfig</code> supplies the answer.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">apiVersion</span>: <span style="color:#ae81ff">crd.k8s.amazonaws.com/v1alpha1</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">kind</span>: <span style="color:#ae81ff">ENIConfig</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">name</span>: <span style="color:#ae81ff">us-west-2a                </span> <span style="color:#75715e"># must equal the node&#39;s zone label value</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">subnet</span>: <span style="color:#ae81ff">subnet-pod-a            </span> <span style="color:#75715e"># pod subnet in this AZ</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">securityGroups</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ae81ff">sg-cluster-primary</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ae81ff">sg-cluster</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ae81ff">sg-node</span>
+</span></span></code></pre></div><p>It has just two fields, <code>subnet</code> and <code>securityGroups</code>.</p>
+<h3 id="how-a-node-finds-its-eniconfig">
+  How a node finds its ENIConfig
+  <a class="heading-link" href="#how-a-node-finds-its-eniconfig">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>When a node joins, the CNI reads the label named by <code>ENI_CONFIG_LABEL_DEF</code> (usually the zone label) and looks up the <code>ENIConfig</code> whose <strong>name equals that label&rsquo;s value</strong>. That is why the objects are named after zones. You can also annotate a node with <code>k8s.amazonaws.com/eniConfig: &lt;name&gt;</code> to pick one explicitly. You need one <code>ENIConfig</code> per AZ because a subnet lives in exactly one AZ.</p>
+<h3 id="behaviours-to-remember">
+  Behaviours to remember
+  <a class="heading-link" href="#behaviours-to-remember">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li>A node with no matching <code>ENIConfig</code> cannot get pod IPs.</li>
+<li>Changes apply only to ENIs created afterwards, so replace nodes to pick them up.</li>
+<li>If <code>securityGroups</code> is omitted, pod ENIs fall back to the security groups on the node&rsquo;s primary ENI.</li>
+<li>The <code>last-applied-configuration</code> annotation can drift from the live object if someone edits it outside your normal apply path. Find the real source of truth before you change anything.</li>
+</ul>
+<h3 id="which-security-groups-to-use">
+  Which security groups to use
+  <a class="heading-link" href="#which-security-groups-to-use">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>None of the groups above are pod-specific. In a typical Terraform-built cluster there are three, and the ENIConfigs reuse them on pod ENIs:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Security group</th>
+					<th>Created by</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>EKS primary cluster SG (<code>eks-cluster-sg-&lt;cluster&gt;-&lt;number&gt;</code>)</td>
+					<td><strong>EKS itself</strong>, automatically at cluster creation</td>
+			</tr>
+			<tr>
+					<td>Cluster SG (<code>&lt;cluster&gt;-cluster-&lt;suffix&gt;</code>)</td>
+					<td>Terraform, if you use the community <code>terraform-aws-modules/eks</code> module</td>
+			</tr>
+			<tr>
+					<td>Node shared SG (<code>&lt;cluster&gt;-node-&lt;suffix&gt;</code>)</td>
+					<td>Terraform, from the same module</td>
+			</tr>
+	</tbody>
+</table>
+<p>Reusing them lets pods behave like nodes for control-plane callbacks (webhooks, kubelet) and node-to-node traffic. Two more things to keep in mind:</p>
+<ul>
+<li>The load balancer&rsquo;s security group must be allowed to reach pods. The LBC normally manages its own rules for this, so look at what it creates before adding manual ones.</li>
+<li>Database and cache security groups must allow the <strong>pod subnet CIDR or the node/pod security group</strong>, because within the VPC the source is the pod IP, not the node IP.</li>
+</ul>
+<p>Pods using <code>ENABLE_POD_ENI</code> (security groups for pods) are a separate feature that gives individual pods their own groups.</p>
+<hr>
+<h2 id="snat">
+  SNAT
+  <a class="heading-link" href="#snat">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p><strong>SNAT (Source Network Address Translation)</strong> is when a device rewrites the <strong>source IP</strong> of outgoing packets to a different IP and remembers the mapping so replies can be translated back. The destination is untouched. Your home router does this: your laptop is <code>192.168.1.5</code>, but websites see the router&rsquo;s public IP. When it also translates ports, it is often called masquerade or PAT.</p>
+<h3 id="in-an-eks-cluster-with-custom-networking">
+  In an EKS cluster with custom networking
+  <a class="heading-link" href="#in-an-eks-cluster-with-custom-networking">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<p>A pod IP like <code>100.64.x.x</code> only exists inside the VPC.</p>
+<ul>
+<li><strong>Without SNAT</strong>, a pod calling something over a peering link, Transit Gateway or the internet would send packets with an unroutable source, and replies would never arrive.</li>
+<li><strong>With SNAT</strong> (<code>EXTERNALSNAT=false</code>), iptables rules on the node rewrite the source to the node&rsquo;s primary IP, which is routable. The reply comes back to the node, which maps it to the pod.</li>
+</ul>
+<p>The AWS documentation is explicit about where the line is. The CNI translates the pod IP only when the destination is not within a CIDR block associated with the VPC. That includes secondary CIDRs, so a pod talking to a database in the same VPC is seen with its real pod IP. One exception to know about is that pods with <code>hostNetwork: true</code> already use the node&rsquo;s IP, so nothing is translated for them.</p>
+<h3 id="consequences">
+  Consequences
+  <a class="heading-link" href="#consequences">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h3>
+<ul>
+<li>Systems outside the VPC see the <strong>node IP</strong>, not the pod IP. Their allowlists and firewalls must permit node IPs, or the NAT gateway IP for internet traffic.</li>
+<li>You lose per-pod identity at the remote end.</li>
+<li><code>EXTERNALSNAT=true</code> skips node-level SNAT and relies on an external NAT such as a NAT gateway. It only works if pod IPs are routable there, and nodes must be in private subnets with a route to that NAT gateway.</li>
+</ul>
+<p>For completeness, DNAT is the opposite: it rewrites the <strong>destination</strong>. kube-proxy does this when it turns a Service ClusterIP into a pod IP.</p>
+<hr>
+<h2 id="best-practices-checklist">
+  Best Practices Checklist
+  <a class="heading-link" href="#best-practices-checklist">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<ul>
+<li>Use a secondary CIDR (<code>100.64.0.0/10</code>) for pods if the primary range is scarce.</li>
+<li>Enable prefix delegation for pod density.</li>
+<li>Keep <code>ENIConfig</code> objects and CNI settings in code, and know where the source of truth lives.</li>
+<li>Replace nodes after changing custom networking.</li>
+<li>Allow pod subnet CIDRs in downstream security groups.</li>
+<li>Remember that anything outside the VPC sees the node IP, and update allowlists to match.</li>
+</ul>
+<hr>
+<h2 id="read-only-commands-for-inspecting-a-cluster">
+  Read-Only Commands for Inspecting a Cluster
+  <a class="heading-link" href="#read-only-commands-for-inspecting-a-cluster">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<p>These commands only read state, so they are safe to run against a live cluster.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># VPC CIDRs, including secondary ones</span>
+</span></span><span style="display:flex;"><span>aws ec2 describe-vpcs --vpc-ids &lt;vpc-id&gt; --query <span style="color:#e6db74">&#39;Vpcs[0].CidrBlockAssociationSet[].CidrBlock&#39;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># VPC CNI custom networking</span>
+</span></span><span style="display:flex;"><span>kubectl get eniconfig -o yaml
+</span></span><span style="display:flex;"><span>kubectl get ds aws-node -n kube-system -o jsonpath<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{&#34;\n&#34;}{end}&#39;</span>
+</span></span><span style="display:flex;"><span>aws eks describe-addon --cluster-name &lt;cluster&gt; --addon-name vpc-cni --query <span style="color:#e6db74">&#39;addon.configurationValues&#39;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Security groups referenced by an ENIConfig</span>
+</span></span><span style="display:flex;"><span>aws ec2 describe-security-groups --group-ids &lt;sg-id&gt; --query <span style="color:#e6db74">&#39;SecurityGroups[].{id:GroupId,name:GroupName,desc:Description}&#39;</span>
+</span></span></code></pre></div><hr>
+<h2 id="key-takeaways">
+  Key Takeaways
+  <a class="heading-link" href="#key-takeaways">
+    <i class="fa-solid fa-link" aria-hidden="true" title="Link to heading"></i>
+    <span class="sr-only">Link to heading</span>
+  </a>
+</h2>
+<ul>
+<li><strong>Pods on EKS use real VPC IPs</strong>, which is what makes direct-to-pod load balancing possible, and also what drains your address space.</li>
+<li><strong>Give pods their own address range</strong> with a secondary CIDR, custom networking and one <code>ENIConfig</code> per AZ, and roll your nodes afterwards.</li>
+<li><strong>Use prefix delegation</strong> to raise pod density per node.</li>
+<li><strong>Traffic leaving the VPC shows up as the node IP</strong>, so allowlists need node IPs, not pod IPs. Traffic inside the VPC keeps the pod IP.</li>
+</ul>
+
+      </div>
+
+
+      <footer>
+        
+
+<section class="see-also">
+  
+    
+    
+    
+  
+</section>
+
+
+        
+        
+        
+        
+        
+        
+        
+      </footer>
+    </article>
+
+    
+  </section>
+
+    </div>
+
+    <footer class="footer">
+  <section class="container">
+    ©
+    
+      2019 -
+    
+    2026
+     Aakash Singhal 
+    ·
+    
+    Powered by <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> & <a href="https://github.com/luizdepra/hugo-coder/" target="_blank" rel="noopener">Coder</a>.
+    
+  </section>
+</footer>
+
+  </main>
+
+  
+
+  
+  
+  <script src="/js/coder.min.6ae284be93d2d19dad1f02b0039508d9aab3180a12a06dcc71b0b0ef7825a317.js" integrity="sha256-auKEvpPS0Z2tHwKwA5UI2aqzGAoSoG3McbCw73gloxc="></script>
+  
+
+  
+
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</body>
+</html>
